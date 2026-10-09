@@ -1,0 +1,87 @@
+body{
+margin:0;
+padding:20px;
+font-family:Arial;
+background:#f5f5f5;
+}
+
+.container{
+max-width:1200px;
+margin:auto;
+background:white;
+padding:20px;
+border-radius:15px;
+box-shadow:0 0 10px rgba(0,0,0,0.15);
+}
+
+h1{
+text-align:center;
+color:#0366d6;
+}
+
+.menu{
+text-align:center;
+margin-bottom:20px;
+}
+
+button{
+padding:10px 15px;
+margin:5px;
+background:#0366d6;
+color:white;
+border:none;
+border-radius:7px;
+cursor:pointer;
+}
+
+button:hover{
+background:#024ca3;
+}
+
+input{
+width:100%;
+padding:12px;
+font-size:18px;
+margin-top:10px;
+}
+
+select{
+width:100%;
+padding:12px;
+font-size:18px;
+}
+
+#result,#recommend,#analysis{
+margin-top:20px;
+padding:15px;
+border-radius:10px;
+background:#eef5ff;
+}
+
+/* 당첨 확인 시 일치/불일치 로또 공 애니메이션 및 하이라이트 */
+.lotto-ball {
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* 맞춘 당첨 번호 공 (확대 + 빛남 효과) */
+.lotto-ball.ball-hit {
+    transform: scale(1.15);
+    box-shadow: 0 0 14px #10b981, inset -3px -3px 8px rgba(0, 0, 0, 0.4);
+    border: 2px solid #ffffff;
+    z-index: 2;
+}
+
+/* 맞춘 보너스 번호 공 (주황색 빛남 효과) */
+.lotto-ball.ball-bonus {
+    transform: scale(1.15);
+    box-shadow: 0 0 14px #f59e0b, inset -3px -3px 8px rgba(0, 0, 0, 0.4);
+    border: 2px solid #ffffff;
+    z-index: 2;
+}
+
+/* 틀린 번호 공 (어둡고 차분하게 처리) */
+.lotto-ball.ball-miss {
+    opacity: 0.35;
+    filter: grayscale(40%);
+    transform: scale(0.95);
+}

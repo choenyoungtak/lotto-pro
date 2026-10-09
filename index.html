@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로또 분석기 PRO</title>
+    
+    <!-- CSS 연결 (필요시 파일명 변경) -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Chart.js CDN 올바른 경로 -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- TensorFlow.js 라이브러리 추가 -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+</head>
+<body>
+
+<div class="container">
+    <h1>🎱 로또 분석기 PRO</h1>
+
+    <div class="menu">
+        <button onclick="autoNumber()">자동번호</button>
+        <button onclick="checkWin()">당첨확인</button>
+        <button onclick="hotRecommend()">HOT추천</button>
+        <button onclick="coldRecommend()">COLD추천</button>
+        <button onclick="trendRecommend()">최근추세</button>
+        <button onclick="aiRecommend()">AI추천</button>
+        <button onclick="showStatistics()">통계분석</button>
+        <button onclick="enhancedAiRecommend()">⚡ 강화 AI 정밀 분석 실행</button>
+    </div>
+
+    <select id="roundSelect"></select>
+    <input type="text" id="numbers" placeholder="1,2,3,4,5,6">
+
+    <div id="result"></div>
+    <div id="recommend"></div>
+    <div id="analysis"></div>
+
+    <canvas id="chart"></canvas>
+</div>
+
+<!-- index.html 하단 -->
+<script src="app.js"></script>
+<script src="loadData.js"></script>
+<script src="getFrequency.js"></script>
+<script src="showRecommend.js"></script> <!-- 이 줄을 꼭 추가해주세요! -->
+
+<script src="autoNumber.js"></script>
+<script src="checkWin.js"></script>
+<script src="hotRecommend.js"></script>
+<script src="coldRecommend.js"></script>
+<script src="trendRecommend.js"></script>
+<script src="aiRecommend.js"></script>
+<script src="showStatistics.js"></script>
+<script src="enhancedAiRecommend.js"></script>
+<!-- PWA 설정 연결 -->
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#0f172a">
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('서비스 워커 등록 성공:', reg.scope))
+        .catch(err => console.log('서비스 워커 등록 실패:', err));
+    });
+  }
+</script>
+
+</body>
+</html>
