@@ -17,7 +17,7 @@ function trendRecommend() {
         return;
     }
 
-    // 2. 선택한 회차 이하(N회차 포함 및 이전 회차) 데이터 필터링
+    // 2. 선택한 회차 이하(N회차 포함 및 이전 회차) 데이터 필터링[cite: 9]
     const filteredData = lottoData.filter(draw => {
         const round = Number(draw["회차"] || draw.round);
         return !isNaN(round) && round <= selectedRound;
@@ -28,10 +28,10 @@ function trendRecommend() {
         return;
     }
 
-    // 3. 선택한 회차 기준 가장 최근 30회차 데이터 추출
+    // 3. 선택한 회차 기준 가장 최근 30회차 데이터 추출[cite: 9]
     const recent30 = filteredData.slice(0, 30);
 
-    // 4. 최근 30회차 동안의 출현 빈도 계산
+    // 4. 최근 30회차 동안의 출현 빈도 계산[cite: 9]
     const freq = new Array(46).fill(0);
     recent30.forEach(draw => {
         const numbers = draw["당첨번호"] || draw.numbers;
@@ -44,13 +44,13 @@ function trendRecommend() {
         }
     });
 
-    // 5. 출현 빈도를 가중치로 설정 (최근에 자주 나온 번호일수록 확률 상승)
+    // 5. 출현 빈도를 가중치로 설정[cite: 9]
     const weights = new Array(46).fill(0);
     for (let i = 1; i <= 45; i++) {
-        weights[i] = freq[i] + 1; // 0회 출현 번호도 최소 가중치 1 부여
+        weights[i] = freq[i] + 1;
     }
 
-    // 6. 가중치 기반 최근추세 추천 5세트 생성
+    // 6. 가중치 기반 최근추세 추천 5세트 생성[cite: 9]
     const sets = [];
     let attempts = 0;
 
@@ -58,22 +58,29 @@ function trendRecommend() {
         attempts++;
         const selected = generateWeightedNumbers(weights);
 
-        // 중복 세트 방지
         const setStr = selected.join(",");
         if (!sets.some(s => s.join(",") === setStr)) {
             sets.push(selected);
         }
     }
 
-    // 7. showRecommend 호출하여 화면에 결과 및 [당첨 확인] 버튼 출력
+    const title = `📈 [${selectedRound}회차 기준 최근 30회] 최근추세 추천 (5세트)`;
+
+    // 7. 화면 출력 및 [종합 보내기] 버튼 포함 렌더링 처리[cite: 9]
     if (typeof showRecommend === "function") {
-        showRecommend(`📈 [${selectedRound}회차 기준 최근 30회] 최근추세 추천 (5세트)`, sets);
+        showRecommend(title, sets);
+        injectTrendBasketButtons();
     } else {
-        alert("showRecommend.js 파일이 올바르게 로드되지 않았습니다.");
+        renderDefaultTrendView(title, sets);
+    }
+
+    // [중요] 최근추세 분석 완료 상태 체크 실행[cite: 9]
+    if (typeof markAnalysisComplete === "function") {
+        markAnalysisComplete('trend');
     }
 }
 
-// 가중치 기반 무작위 추출 함수 (자주 나온 번호일수록 우선 선정)
+// 가중치 기반 무작위 추출 함수[cite: 9]
 function generateWeightedNumbers(weights) {
     const numbers = [];
     const available = Array.from({ length: 45 }, (_, i) => i + 1);
@@ -97,4 +104,78 @@ function generateWeightedNumbers(weights) {
     }
 
     return numbers.sort((a, b) => a - b);
+}
+
+// 기본 뷰어 (showRecommend가 없을 때 대비 및 [종합 보내기] 버튼 포함)[cite: 9]
+function renderDefaultTrendView(title, sets) {
+    const recommendDiv = document.getElementById("recommend");
+    if (!recommendDiv) return;
+
+    let html = `
+        <div class="recommend-card" style="padding: 25px;">
+            <div class="recommend-header" style="margin-bottom: 20px;"><span style="font-size: 1.15rem; font-weight: 800;">${title}</span></div>
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 15px;">
+    `;
+
+    sets.forEach((set, idx) => {
+        const setStr = set.join(",");
+        const resultSpanId = `check-result-trend-${idx}`;
+        const containerId = `ball-container-trend-${idx}`;
+        const ballsHtml = set.map(n => typeof createLottoBallHtml === 'function' ? createLottoBallHtml(n) : `<span class="lotto-ball">${n}</span>`).join("");
+
+        html += `
+            <div class="recommend-row" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.35); padding: 14px 18px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <span class="set-tag" style="color: #38bdf8; font-weight: 700; min-width: 90px;">[세트 ${idx + 1}]</span>
+                <div id="${containerId}" class="lotto-ball-wrapper" style="display: flex; gap: 10px; align-items: center;">${ballsHtml}</div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                    <button class="btn-inline-check" style="background: #0284c7; color: white; padding: 8px 14px;" onclick="sendToComprehensiveBasket('최근추세 세트 ${idx + 1}', '${setStr}', '최근추세')">종합 보내기</button>
+                    <button class="btn-inline-check" style="padding: 8px 14px;" onclick="checkWinForNumbers('${setStr}', '${resultSpanId}', '${containerId}')">당첨 확인</button>
+                    <span id="${resultSpanId}" class="result-text" style="font-size: 0.9rem;"></span>
+                </div>
+            </div>
+        `;
+    });
+
+    html += `</div></div>`;
+    recommendDiv.innerHTML = html;
+}
+
+// showRecommend 사용 시 당첨 확인 버튼 옆에 [종합 보내기] 버튼을 동적으로 주입하는 헬퍼 함수[cite: 9]
+function injectTrendBasketButtons() {
+    const rows = document.querySelectorAll("#recommend .recommend-row");
+    rows.forEach((row, idx) => {
+        if (row.querySelector(".btn-basket-injected")) return;
+
+        // 행 레이아웃 스타일 적용
+        row.style.cssText = "background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(56, 189, 248, 0.35); padding: 14px 18px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 12px;";
+
+        const ballWrapper = row.querySelector(".lotto-ball-wrapper");
+        if (ballWrapper) {
+            ballWrapper.style.cssText = "display: flex; gap: 10px; align-items: center;";
+        }
+
+        const checkBtn = row.querySelector(".btn-inline-check");
+        if (checkBtn) {
+            checkBtn.style.padding = "8px 14px";
+            const setTag = row.querySelector(".set-tag") ? row.querySelector(".set-tag").innerText : `세트 ${idx + 1}`;
+            if (ballWrapper) {
+                const numbers = Array.from(ballWrapper.querySelectorAll(".lotto-ball, span")).map(el => el.textContent.trim()).filter(n => !isNaN(n) && n !== "").join(",");
+                if (numbers) {
+                    const basketBtn = document.createElement("button");
+                    basketBtn.className = "btn-inline-check btn-basket-injected";
+                    basketBtn.style.cssText = "background: #0284c7; color: white; padding: 8px 14px; margin-right: 8px;";
+                    basketBtn.innerText = "종합 보내기";
+                    basketBtn.onclick = function() {
+                        sendToComprehensiveBasket(`추세 ${setTag}`, numbers, '최근추세');
+                    };
+                    checkBtn.parentNode.insertBefore(basketBtn, checkBtn);
+                }
+            }
+        }
+    });
+}
+
+// 분석 완료 상태 등록[cite: 9]
+if (typeof markAnalysisComplete === "function") {
+    markAnalysisComplete('trend');
 }

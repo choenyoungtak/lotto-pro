@@ -1,5 +1,23 @@
-// 전역 변수 선언
-var lottoData = [];
+// 전역 변수 안전 선언 (이미 선언되어 있지 않은 경우에만 초기화하여 충돌 방지)
+if (typeof window.lottoData === "undefined") {
+    var lottoData = [];
+}
+
+// 종합 바스켓 및 분석 완료 상태 전역 초기화 안전 선언
+if (typeof window.comprehensiveBasket === "undefined") {
+    window.comprehensiveBasket = [];
+}
+
+if (typeof window.analysisStatus === "undefined") {
+    window.analysisStatus = {
+        hot: false,
+        cold: false,
+        trend: false,
+        statistics: false,
+        enhancedAiRecommend: false,
+        lstm: false
+    };
+}
 
 async function loadData() {
     try {
@@ -30,11 +48,38 @@ function populateRounds() {
         select.appendChild(option);
     });
 
-    // 드롭다운 값(회차)이 변경될 때마다 선택된 회차 정보 표시
-    select.addEventListener("change", displaySelectedRoundInfo);
+    // 드롭다운 값(회차)이 변경될 때마다 선택된 회차 정보 표시 및 분석 상태 리셋
+    select.addEventListener("change", () => {
+        displaySelectedRoundInfo();
+        resetAnalysisStateOnRoundChange();
+    });
 
     // 페이지 처음 로드 시 제일 최신 회차 번호 바로 출력
     displaySelectedRoundInfo();
+}
+
+// 회차가 변경될 때 사용자가 혼선이 없도록 분석 완료 상태와 바스켓을 초기화하는 함수
+function resetAnalysisStateOnRoundChange() {
+    window.analysisStatus = {
+        hot: false,
+        cold: false,
+        trend: false,
+        statistics: false,
+        enhancedAiRecommend: false,
+        lstm: false
+    };
+    
+    // 종합 버튼 다시 비활성화 처리
+    const totalBtn = document.getElementById("totalBtn");
+    if (totalBtn) {
+        totalBtn.disabled = true;
+        totalBtn.style.background = "#475569";
+        totalBtn.style.opacity = "0.6";
+        totalBtn.style.cursor = "not-allowed";
+        totalBtn.textContent = "🌟 종합 예상 결과 (모든 분석을 완료해 주세요)";
+    }
+    
+    console.log("회차 변경으로 인해 분석 상태 및 버튼이 초기화되었습니다.");
 }
 
 // 선택된 회차의 당첨 번호 및 보너스 번호를 화면에 표시하는 함수
@@ -58,6 +103,55 @@ function displaySelectedRoundInfo() {
                 </p>
             </div>
         `;
+    }
+}
+
+// 불필요한 속성(enhancedAi 등) 유입을 원천 방지하고 6개 키만 완벽히 고정하는 정화 함수
+function getSanitizedAnalysisStatus() {
+    if (!window.analysisStatus) {
+        window.analysisStatus = {
+            hot: false,
+            cold: false,
+            trend: false,
+            statistics: false,
+            enhancedAiRecommend: false,
+            lstm: false
+        };
+    }
+
+    if (Object.prototype.hasOwnProperty.call(window.analysisStatus, 'enhancedAi')) {
+        if (window.analysisStatus.enhancedAi) {
+            window.analysisStatus.enhancedAiRecommend = true;
+        }
+        delete window.analysisStatus.enhancedAi;
+    }
+
+    return {
+        hot: Boolean(window.analysisStatus.hot),
+        cold: Boolean(window.analysisStatus.cold),
+        trend: Boolean(window.analysisStatus.trend),
+        statistics: Boolean(window.analysisStatus.statistics),
+        enhancedAiRecommend: Boolean(window.analysisStatus.enhancedAiRecommend),
+        lstm: Boolean(window.analysisStatus.lstm)
+    };
+}
+
+// 중복 없이 하나로 통합된 단일 분석 완료 체크 함수
+function markAnalysisComplete(moduleName) {
+    if (moduleName === 'enhancedAi') {
+        moduleName = 'enhancedAiRecommend';
+    }
+
+    let status = getSanitizedAnalysisStatus();
+    if (Object.prototype.hasOwnProperty.call(status, moduleName)) {
+        status[moduleName] = true;
+    }
+    window.analysisStatus = status;
+
+    console.log(`[분석 완료] ${moduleName} 처리됨`, window.analysisStatus);
+
+    if (typeof checkAllAnalysisComplete === "function") {
+        checkAllAnalysisComplete();
     }
 }
 

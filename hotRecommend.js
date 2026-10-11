@@ -1,7 +1,7 @@
 /**
- * [HOT 추천 모듈]
- * 누적 통계 기반 가중치 추출 방식으로 5세트를 생성하고,
- * 세트 간 공통 출현 번호를 집계하여 화면에 함께 렌더링합니다.
+ * [HOT 추천 모듈 - 통계 가중치 강화 버전]
+ * 누적 통계 빈도가 높은 상위 번호들에 강력한 가중치를 부여하여
+ * 실제로 많이 나온 번호 위주로 5세트를 정밀하게 생성합니다.
  */
 
 function hotRecommend() {
@@ -22,7 +22,7 @@ function hotRecommend() {
         return;
     }
 
-    // 선택한 회차 이하(N회차 포함 및 이전 회차) 데이터만 필터링
+    // 선택한 회차 이하(N회차 포함 및 이전 회차) 데이터만 필터링[cite: 15]
     const filteredData = lottoData.filter(draw => {
         const round = Number(draw["회차"] || draw.round);
         return !isNaN(round) && round <= selectedRound;
@@ -33,7 +33,7 @@ function hotRecommend() {
         return;
     }
 
-    // 해당 회차까지의 누적 출현 빈도(Hot Number) 계산
+    // 해당 회차까지의 누적 출현 빈도(Hot Number) 계산[cite: 15]
     const freq = new Array(46).fill(0);
     filteredData.forEach(draw => {
         const numbers = draw["당첨번호"] || draw.numbers;
@@ -46,17 +46,19 @@ function hotRecommend() {
         }
     });
 
-    // 출현 빈도를 가중치로 설정
-    const weights = new Array(46).fill(0);
+    // [개선 포인트] 빈도에 비례한 가중치를 훨씬 강력하게 부여 (많이 나온 번호가 압도적으로 자주 뽑히도록 설정)
+    const weights = new Array(46).fill(1);
+    const maxFreq = Math.max(...freq.slice(1)) || 1;
     for (let i = 1; i <= 45; i++) {
-        weights[i] = freq[i] + 1;
+        // 출현 횟수가 많을수록 가중치 점수를 제곱에 가깝게 높여 빈도수 차이를 극대화함
+        weights[i] = Math.pow(freq[i], 1.8) + 1;
     }
 
-    // 가중치 기반 HOT 추천 5세트 생성
+    // 강화된 가중치 기반 HOT 추천 5세트 생성
     const sets = [];
     let attempts = 0;
 
-    while (sets.length < 5 && attempts < 1000) {
+    while (sets.length < 5 && attempts < 2000) {
         attempts++;
         const selected = generateWeightedNumbers(weights);
 
@@ -66,24 +68,27 @@ function hotRecommend() {
         }
     }
 
-    // 생성된 HOT 세트들 간 공통 출현 번호 집계 (2회 이상 겹친 번호)
+    // 생성된 HOT 세트들 간 공통 출현 번호 집계[cite: 15]
     const commonOverlapNumbers = extractHotCommonOverlapNumbers(sets);
 
-    // 화면 출력 처리: 기존 showRecommend 함수가 있다면 활용하되, 공통 번호 영역을 DOM에 강제로 추가 주입
-    const title = `🔥 [${selectedRound}회차 누적 통계 기준] HOT 추천 (5세트)`;
+    // 화면 출력 처리[cite: 15]
+    const title = `🔥 [${selectedRound}회차 누적 통계 기준] HOT 추천 (통계 반영 5세트)`;
     
     if (typeof showRecommend === "function") {
         showRecommend(title, sets);
+        injectHotBasketButtons();
     } else {
-        // showRecommend가 없을 경우를 대비한 기본 렌더링 뷰어
         renderDefaultHotView(title, sets);
     }
 
-    // 화면에 공통 출현 번호를 별도로 시각화해서 뿌려주는 함수 실행
     renderHotCommonOverlapUI(commonOverlapNumbers);
+
+    if (typeof markAnalysisComplete === "function") {
+        markAnalysisComplete('hot');
+    }
 }
 
-// 가중치 기반 무작위 추출 함수
+// 가중치 기반 무작위 추출 함수[cite: 15]
 function generateWeightedNumbers(weights) {
     const numbers = [];
     const available = Array.from({ length: 45 }, (_, i) => i + 1);
@@ -109,7 +114,7 @@ function generateWeightedNumbers(weights) {
     return numbers.sort((a, b) => a - b);
 }
 
-// 생성된 HOT 세트들 내부에서 공통으로 가장 많이 겹쳐서 나온 숫자 집계 함수
+// 생성된 HOT 세트들 내부에서 공통으로 가장 많이 겹쳐서 나온 숫자 집계 함수[cite: 15]
 function extractHotCommonOverlapNumbers(sets) {
     if (!sets || sets.length === 0) return [];
 
@@ -124,51 +129,46 @@ function extractHotCommonOverlapNumbers(sets) {
 
     const list = [];
     for (let i = 1; i <= 45; i++) {
-        // 2개 이상의 세트에서 공통으로 등장한 번호 추출
         if (freq[i] >= 2) {
             list.push({ num: i, count: freq[i] });
         }
     }
     
-    // 많이 겹친 순서(count 내림차순) 및 번호 오름차순 정렬
     list.sort((a, b) => b.count - a.count || a.num - b.num);
     return list;
 }
 
-// 화면 상단 또는 결과 영역에 공통 출현 번호를 주입하는 UI 렌더러
+// 화면 상단 또는 결과 영역에 공통 출현 번호를 주입하는 UI 렌더러[cite: 15]
 function renderHotCommonOverlapUI(commonOverlapNumbers) {
     let recommendDiv = document.getElementById("recommend");
     if (!recommendDiv) return;
 
-    // 공통 번호 볼 HTML 생성
     const commonBallsHtml = commonOverlapNumbers.length > 0 
         ? commonOverlapNumbers.map(item => `
-            <div style="display: flex; flex-direction: column; align-items: center; gap: 4px;">
+            <div style="display: flex; flex-direction: column; align-items: center; gap: 6px; margin: 4px;">
                 ${typeof createLottoBallHtml === 'function' ? createLottoBallHtml(item.num) : `<span class="lotto-ball">${item.num}</span>`}
-                <span style="font-size: 0.75rem; color: #f59e0b; font-weight: 600;">${item.count}개 세트 공통</span>
+                <span style="font-size: 0.8rem; color: #f59e0b; font-weight: 700; background: rgba(245, 158, 11, 0.12); padding: 3px 8px; border-radius: 6px;">${item.count}개 세트 공통</span>
             </div>
         `).join("")
-        : `<p style="color: #94a3b8; font-size: 0.85rem; margin: 0;">이번 추천 세트 간에 2회 이상 겹치는 공통 번호가 없습니다.</p>`;
+        : `<p style="color: #94a3b8; font-size: 0.9rem; margin: 0; text-align: center; padding: 10px;">이번 추천 세트 간에 2회 이상 겹치는 공통 번호가 없습니다.</p>`;
 
-    // 기존 결과 카드 상단이나 하단에 공통 번호 박스를 동적으로 삽입
     const overlapBoxHtml = `
-        <div style="padding: 20px; background: rgba(245, 158, 11, 0.05); border: 1px solid #f59e0b; border-radius: 16px; margin-top: 15px; margin-bottom: 20px;">
-            <div style="display: flex; align-items: center; gap: 8px; margin-bottom: 12px;">
-                <span style="font-size: 1.2rem;">💎</span>
-                <h4 style="margin: 0; color: #f59e0b; font-size: 1.05rem; font-weight: 800;">
+        <div style="padding: 24px; background: rgba(245, 158, 11, 0.05); border: 1px solid rgba(245, 158, 11, 0.3); border-radius: 18px; margin-top: 15px; margin-bottom: 25px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 12px;">
+                <span style="font-size: 1.3rem;">💎</span>
+                <h4 style="margin: 0; color: #f59e0b; font-size: 1.1rem; font-weight: 800;">
                     HOT 추천 세트 간 공통 출현 핵심 번호
                 </h4>
             </div>
-            <p style="color: #94a3b8; font-size: 0.85rem; margin: 0 0 15px 0;">
+            <p style="color: #94a3b8; font-size: 0.9rem; margin: 0 0 20px 0; line-height: 1.4;">
                 생성된 5개의 추천 세트 내부에서 가장 빈번하게 중복 겹쳐서 등장하는 공통 번호입니다.
             </p>
-            <div style="display: flex; flex-wrap: wrap; gap: 12px; justify-content: center; align-items: center; padding: 10px 0;">
+            <div style="display: flex; flex-wrap: wrap; gap: 16px; justify-content: center; align-items: center; padding: 10px 0;">
                 ${commonBallsHtml}
             </div>
         </div>
     `;
 
-    // recommendDiv 내부의 가장 첫 번째 카드 상단에 해당 HTML 삽입
     const firstCard = recommendDiv.querySelector(".recommend-card");
     if (firstCard) {
         firstCard.insertAdjacentHTML('afterbegin', overlapBoxHtml);
@@ -177,15 +177,15 @@ function renderHotCommonOverlapUI(commonOverlapNumbers) {
     }
 }
 
-// 기본 뷰어 (showRecommend가 없을 때 대비)
+// 기본 뷰어[cite: 15]
 function renderDefaultHotView(title, sets) {
     const recommendDiv = document.getElementById("recommend");
     if (!recommendDiv) return;
 
     let html = `
-        <div class="recommend-card">
-            <div class="recommend-header"><span>${title}</span></div>
-            <div style="display: flex; flex-direction: column; gap: 10px; margin-top: 15px;">
+        <div class="recommend-card" style="padding: 25px;">
+            <div class="recommend-header" style="margin-bottom: 20px;"><span style="font-size: 1.15rem; font-weight: 800;">${title}</span></div>
+            <div style="display: flex; flex-direction: column; gap: 14px; margin-top: 15px;">
     `;
 
     sets.forEach((set, idx) => {
@@ -195,12 +195,13 @@ function renderDefaultHotView(title, sets) {
         const ballsHtml = set.map(n => typeof createLottoBallHtml === 'function' ? createLottoBallHtml(n) : `<span class="lotto-ball">${n}</span>`).join("");
 
         html += `
-            <div class="recommend-row">
-                <span class="set-tag" style="color: #f59e0b;">[세트 ${idx + 1}]</span>
-                <div id="${containerId}" class="lotto-ball-wrapper">${ballsHtml}</div>
-                <div style="display: flex; align-items: center; gap: 10px; margin-left: auto;">
-                    <button class="btn-inline-check" onclick="checkWinForNumbers('${setStr}', '${resultSpanId}', '${containerId}')">당첨 확인</button>
-                    <span id="${resultSpanId}" class="result-text"></span>
+            <div class="recommend-row" style="background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(245, 158, 11, 0.35); padding: 14px 18px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px;">
+                <span class="set-tag" style="color: #f59e0b; font-weight: 700; min-width: 90px;">[세트 ${idx + 1}]</span>
+                <div id="${containerId}" class="lotto-ball-wrapper" style="display: flex; gap: 10px; align-items: center;">${ballsHtml}</div>
+                <div style="display: flex; align-items: center; gap: 12px; margin-left: auto;">
+                    <button class="btn-inline-check" style="background: #0284c7; color: white; padding: 8px 14px;" onclick="sendToComprehensiveBasket('HOT세트 ${idx + 1}', '${setStr}', 'HOT추천')">종합 보내기</button>
+                    <button class="btn-inline-check" style="padding: 8px 14px;" onclick="checkWinForNumbers('${setStr}', '${resultSpanId}', '${containerId}')">당첨 확인</button>
+                    <span id="${resultSpanId}" class="result-text" style="font-size: 0.9rem;"></span>
                 </div>
             </div>
         `;
@@ -208,4 +209,39 @@ function renderDefaultHotView(title, sets) {
 
     html += `</div></div>`;
     recommendDiv.innerHTML = html;
+}
+
+// 후처리 헬퍼 함수[cite: 15]
+function injectHotBasketButtons() {
+    const rows = document.querySelectorAll("#recommend .recommend-row");
+    rows.forEach((row, idx) => {
+        if (row.querySelector(".btn-basket-injected")) return;
+
+        // 행 레이아웃 스타일 적용
+        row.style.cssText = "background: rgba(15, 23, 42, 0.75); border: 1px solid rgba(245, 158, 11, 0.35); padding: 14px 18px; border-radius: 14px; display: flex; align-items: center; flex-wrap: wrap; gap: 15px; margin-bottom: 12px;";
+
+        const ballWrapper = row.querySelector(".lotto-ball-wrapper");
+        if (ballWrapper) {
+            ballWrapper.style.cssText = "display: flex; gap: 10px; align-items: center;";
+        }
+
+        const checkBtn = row.querySelector(".btn-inline-check");
+        if (checkBtn) {
+            checkBtn.style.padding = "8px 14px";
+            const setTag = row.querySelector(".set-tag") ? row.querySelector(".set-tag").innerText : `세트 ${idx + 1}`;
+            if (ballWrapper) {
+                const numbers = Array.from(ballWrapper.querySelectorAll(".lotto-ball, span")).map(el => el.textContent.trim()).filter(n => !isNaN(n) && n !== "").join(",");
+                if (numbers) {
+                    const basketBtn = document.createElement("button");
+                    basketBtn.className = "btn-inline-check btn-basket-injected";
+                    basketBtn.style.cssText = "background: #0284c7; color: white; padding: 8px 14px; margin-right: 8px;";
+                    basketBtn.innerText = "종합 보내기";
+                    basketBtn.onclick = function() {
+                        sendToComprehensiveBasket(`HOT ${setTag}`, numbers, 'HOT추천');
+                    };
+                    checkBtn.parentNode.insertBefore(basketBtn, checkBtn);
+                }
+            }
+        }
+    });
 }

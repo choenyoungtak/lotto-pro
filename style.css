@@ -58,6 +58,84 @@ border-radius:10px;
 background:#eef5ff;
 }
 
+/* --- [신규 추가] 기본 분석 및 AI 분석 카드 그리드 레이아웃 --- */
+.analysis-cards-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+    margin-bottom: 25px;
+}
+
+@media (max-width: 768px) {
+    .analysis-cards-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.analysis-card {
+    background: #f8fafc;
+    border: 1px solid #cbd5e1;
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.02);
+}
+
+.analysis-card.ai-card {
+    background: #faf5ff;
+    border: 1px solid #e9d5ff;
+}
+
+.analysis-card-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 10px;
+}
+
+.analysis-card-title {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 800;
+}
+
+.analysis-card-desc {
+    color: #64748b;
+    font-size: 0.85rem;
+    margin: 0 0 16px 0;
+    line-height: 1.4;
+}
+
+.analysis-buttons-flex {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* 개별 모듈 버튼 커스텀 스타일 */
+.btn-module {
+    padding: 10px 14px;
+    border-radius: 8px;
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+.btn-ai-enhanced {
+    background: #0284c7;
+    color: white;
+}
+
+.btn-ai-lstm {
+    background: #059669;
+    color: white;
+}
+
+.btn-ai-multi {
+    background: linear-gradient(135deg, #7c3aed, #a855f7);
+    color: white;
+    width: 100%;
+    margin-top: 5px;
+}
+
 /* 당첨 확인 시 일치/불일치 로또 공 애니메이션 및 하이라이트 */
 .lotto-ball {
     transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);

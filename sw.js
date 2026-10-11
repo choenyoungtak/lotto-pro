@@ -3,8 +3,9 @@ const assetsToCache = [
   './index.html',
   './enhancedAiRecommend.js',
   './hotRecommend.js',
-  './lottoData.json'
-  // 추가로 사용하는 CSS나 JS 파일이 있다면 여기에 이름을 적어주세요.
+  './lstmRecommend.js', // [추가]
+  './lottoData.json',
+  './manifest.json'
 ];
 
 self.addEventListener('install', (event) => {
